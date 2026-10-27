@@ -4,7 +4,7 @@ import { model,Schema } from "mongoose";
 const bookmarkSchema = new Schema(
   {
     user: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    post: { type: Schema.Types.ObjectId, ref: "Post", required: true },
+    post: { type: Schema.Types.ObjectId, ref: "post", required: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );

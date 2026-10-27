@@ -7,8 +7,8 @@ import bcrypt from "bcrypt";
 import { sendOtp, verifyOtp } from "../services/otp.service";
 import { RegisterInput,LoginInput,ResetPasswordInput,VerifyAccountInput,ChangePasswordInput,ForgotPasswordInput } from "../validators/auth.validator";
 import { getPostsPage } from "../services/post.service";
-
-
+import { GoogleLoginInput } from "../validators/auth.validator";
+import { verifyGoogleToken,findOrCreateGoogleUser } from "../services/google.service";
 
 const DUMMY_HASH = bcrypt.hashSync("dummy-password", 12);
 
@@ -146,14 +146,30 @@ export async function changePassword(req: Request, res: Response) {
 export async function getUserPosts(req: Request, res: Response) {
   const username = String(req.params.username).toLowerCase();
 
-  const User = await user.findOne({ username });
-  if (!user) throw new AppError(404, "User not found");
+  const foundUser = await user.findOne({ username });
+  if (!foundUser) throw new AppError(404, "User not found");
 
   const result = await getPostsPage({
-    filter: { author: user._id },
+    filter: { author: foundUser._id },
     cursor: req.query.cursor,
     limit: req.query.limit,
     viewerId: req.userId,
   });
   res.json(result);
+}
+
+export async function googleLogin(req: Request, res: Response) {
+  const { idToken } = req.body as GoogleLoginInput;
+
+  const profile = await verifyGoogleToken(idToken);
+  const { user, isNew } = await findOrCreateGoogleUser(profile);
+
+  if (user.isSuspended) {
+    throw new AppError(403, "This account has been suspended");
+  }
+
+  res.status(isNew ? 201 : 200).json({
+    user: toPublicUser(user),
+    token: signToken(user.id),
+  });
 }

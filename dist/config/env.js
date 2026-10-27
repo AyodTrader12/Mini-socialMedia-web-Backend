@@ -20,6 +20,7 @@ const envSchema = zod_1.default.object({
     CLOUDINARY_CLOUD_NAME: zod_1.default.string().min(1, "CLOUDINARY_CLOUD_NAME is required"),
     CLOUDINARY_API_KEY: zod_1.default.string().min(1, "CLOUDINARY_API_KEY is required"),
     CLOUDINARY_API_SECRET: zod_1.default.string().min(1, "CLOUDINARY_API_SECRET is required"),
-    GOOGLE_KEY: zod_1.default.string().min(16, "GOOGLE_SECRET MUST BE AT EAST 16")
+    GOOGLE_KEY: zod_1.default.string().min(16, "GOOGLE_SECRET MUST BE AT EAST 16"),
+    CLIENT_ID_GOOGLE: zod_1.default.string().min(1, "GOOGLE_CLIENT_ID is required"),
 });
 exports.env = envSchema.parse(process.env);

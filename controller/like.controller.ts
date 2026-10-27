@@ -17,7 +17,7 @@ export async function likePost(req: Request, res: Response) {
 
   let created = true;
   try {
-    await Like.create({ user: req.userId, Post: postId });
+    await Like.create({ user: req.userId, post: postId });
   } catch (err) {
     if ((err as { code?: number }).code !== 11000) throw err;
     created = false; // already liked

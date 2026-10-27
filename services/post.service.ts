@@ -7,6 +7,7 @@ import { Post } from "../model/postModel";
 import { user  } from "../model/userModel";
 import { Bookmark } from "../model/bookMark";
 import {Like } from "../model/likeModel"
+import { Comment } from "../model/commentModel";
 export type PostMedia = {
   url: string;
   publicId: string;
@@ -101,27 +102,42 @@ async function getBookmarkedIds(viewerId: string | undefined, postIds: unknown[]
   if (!viewerId || postIds.length === 0) return new Set<string>();
 
   const rows = await Bookmark.find({ user: viewerId, post: { $in: postIds } }).select("post");
-  return new Set(rows.map((r) => r.Post.toString()));
+  return new Set(rows.map((r) => r.post.toString()));
 }
 
 async function getLikedIds(viewerId: string | undefined, postIds: unknown[]) {
   if (!viewerId || postIds.length === 0) return new Set<string>();
 
   const rows = await Like.find({ user: viewerId, post: { $in: postIds } }).select("post");
-  return new Set(rows.map((r) => r.Post.toString()));
+  return new Set(rows.map((r) => r.post.toString()));
 }
 
 /** Turns post documents into API objects: loads authors and viewer flags in bulk. */
 export async function serializePosts(docs: PostDoc[], viewerId?: string) {
-  const authorIds = [...new Set(docs.map((p) => p.author.toString()))];
+  if (docs.length === 0) return [];
 
+  const authorIds = [...new Set(docs.map((p) => p.author.toString()))];
   const postIds = docs.map((p) => p._id);
+
   const [authors, bookmarked, liked] = await Promise.all([
     user.find({ _id: { $in: authorIds } }),
     getBookmarkedIds(viewerId, postIds),
     getLikedIds(viewerId, postIds),
   ]);
-      return [toPost(Post, authors, { liked: liked.has(Post.id), bookmarked: bookmarked.has(Post.id) })];
+
+  const authorMap = new Map(authors.map((a) => [a.id, a]));
+
+  return docs.flatMap((post) => {
+    const author = authorMap.get(post.author.toString());
+    if (!author) return [];
+
+    return [
+      toPost(post, author, {
+        liked: liked.has(post.id),
+        bookmarked: bookmarked.has(post.id),
+      }),
+    ];
+  });
 }
 
 export async function getPostsPage(opts: {

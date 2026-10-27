@@ -21,6 +21,7 @@ const userModel_1 = require("../model/userModel");
 const AppError_1 = require("../config/AppError");
 const serializer_1 = require("../utils/serializer");
 const cursor_1 = require("../utils/cursor");
+const commentModel_1 = require("../model/commentModel");
 function parseId(raw, notFoundMessage) {
     const id = String(raw);
     if (!mongoose_1.default.isValidObjectId(id))
@@ -41,7 +42,7 @@ function getComments(req, res) {
                 { createdAt: cursor.createdAt, _id: { $lt: cursor.id } },
             ];
         }
-        const docs = yield Comment.find(filter)
+        const docs = yield commentModel_1.Comment.find(filter)
             .sort({ createdAt: -1, _id: -1 })
             .limit(limit + 1);
         const hasMore = docs.length > limit;
@@ -69,7 +70,7 @@ function createComment(req, res) {
         const author = yield userModel_1.user.findById(req.userId);
         if (!author)
             throw new AppError_1.AppError(404, "User not found");
-        const comment = yield Comment.create({ post: postId, author: author._id, text });
+        const comment = yield commentModel_1.Comment.create({ post: postId, author: author._id, text });
         const post = yield postModel_1.Post.findByIdAndUpdate(postId, { $inc: { commentsCount: 1 } }, { new: true });
         if (!post) {
             // Post was deleted between our check and now
@@ -86,7 +87,7 @@ function deleteComment(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b;
         const commentId = parseId(req.params.id, "Comment not found");
-        const comment = yield Comment.findById(commentId);
+        const comment = yield commentModel_1.Comment.findById(commentId);
         if (!comment)
             throw new AppError_1.AppError(404, "Comment not found");
         const post = yield postModel_1.Post.findById(comment.post).select("author commentsCount");
@@ -95,7 +96,7 @@ function deleteComment(req, res) {
         if (!isCommentAuthor && !isPostAuthor && req.userRole !== "admin") {
             throw new AppError_1.AppError(403, "You can't delete this comment");
         }
-        const result = yield Comment.deleteOne({ _id: comment._id });
+        const result = yield commentModel_1.Comment.deleteOne({ _id: comment._id });
         // Only decrement if we really removed it, and never go below zero
         let commentsCount = (_a = post === null || post === void 0 ? void 0 : post.commentsCount) !== null && _a !== void 0 ? _a : 0;
         if (result.deletedCount && post) {

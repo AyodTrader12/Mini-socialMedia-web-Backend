@@ -7,7 +7,7 @@ import { AppError } from "../config/AppError";
 import { CreateCommentInput } from "../validators/comment.validator";
 import { toComment } from "../utils/serializer";
 import { encodeCursor,decodeCursor } from "../utils/cursor";
-
+import { Comment } from "../model/commentModel";
 function parseId(raw: unknown, notFoundMessage: string) {
   const id = String(raw);
   if (!mongoose.isValidObjectId(id)) throw new AppError(404, notFoundMessage);

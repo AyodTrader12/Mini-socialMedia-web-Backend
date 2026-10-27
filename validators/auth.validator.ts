@@ -47,7 +47,11 @@ export const changePasswordSchema = z
     message: "New password must be different from the current one",
     path: ["newPassword"],
   });
+export const googleLoginSchema = z.object({
+  idToken: z.string().min(1, "Google token is required"),
+});
 
+export type GoogleLoginInput = z.infer<typeof googleLoginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type VerifyAccountInput = z.infer<typeof verifyAccountSchema>;

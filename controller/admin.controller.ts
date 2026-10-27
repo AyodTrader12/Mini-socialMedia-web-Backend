@@ -60,7 +60,7 @@ export async function listUsers(req: Request, res: Response) {
 
   if (typeof req.query.q === "string" && req.query.q.trim()) {
     const prefix = new RegExp(`^${escapeRegex(req.query.q.trim().toLowerCase())}`);
-    filter.$or = [{ username: prefix }, { email: prefix }];
+    filter.$or = [{ userName: prefix }, { email: prefix }];
   }
 
   const [users, total] = await Promise.all([
@@ -81,69 +81,69 @@ export async function listUsers(req: Request, res: Response) {
 }
 
 export async function getUser(req: Request, res: Response) {
-  const user = await findTarget(String(req.params.id));
-  res.json({ user: toAdminUser(user) });
+  const targetUser = await findTarget(String(req.params.id));
+  res.json({ user: toAdminUser(targetUser) });
 }
 
 export async function verifyUser(req: Request, res: Response) {
-  const user = await findTarget(String(req.params.id));
+  const targetUser = await findTarget(String(req.params.id));
 
-  user.isVerified = true;
-  await user.save();
-  await Otp.deleteOne({ user: user.id, type: "verify" }); // code no longer needed
+  targetUser.isVerified = true;
+  await targetUser.save();
+  await Otp.deleteOne({ user: targetUser.id, type: "verify" }); // code no longer needed
 
-  res.json({ user: toAdminUser(user) });
+  res.json({ user: toAdminUser(targetUser) });
 }
 
 export async function suspendUser(req: Request, res: Response) {
-  const user = await findTarget(String(req.params.id));
-  assertNotSelf(req, user.id);
-  assertNotAdmin(user);
+  const targetUser = await findTarget(String(req.params.id));
+  assertNotSelf(req, targetUser.id);
+  assertNotAdmin(targetUser);
 
-  user.isSuspended = true;
-  await user.save();
+  targetUser.isSuspended = true;
+  await targetUser.save();
 
-  res.json({ user: toAdminUser(user) });
+  res.json({ user: toAdminUser(targetUser) });
 }
 
 export async function unsuspendUser(req: Request, res: Response) {
-  const user = await findTarget(String(req.params.id));
+  const targetUser = await findTarget(String(req.params.id));
 
-  user.isSuspended = false;
-  await user.save();
+  targetUser.isSuspended = false;
+  await targetUser.save();
 
-  res.json({ user: toAdminUser(user) });
+  res.json({ user: toAdminUser(targetUser) });
 }
 
 export async function updateRole(req: Request, res: Response) {
   const { role } = req.body as UpdateRoleInput;
-  const user = await findTarget(String(req.params.id));
-  assertNotSelf(req, user.id);
+  const targetUser = await findTarget(String(req.params.id));
+  assertNotSelf(req, targetUser.id);
 
-  user.role = role;
-  await user.save();
+  targetUser.role = role;
+  await targetUser.save();
 
-  res.json({ user: toAdminUser(user) });
+  res.json({ user: toAdminUser(targetUser) });
 }
 
 export async function deleteUser(req: Request, res: Response) {
-  const user = await findTarget(String(req.params.id));
-  assertNotSelf(req, user.id);
-  assertNotAdmin(user);
+  const targetUser = await findTarget(String(req.params.id));
+  assertNotSelf(req, targetUser.id);
+  assertNotAdmin(targetUser);
 
-  await user.deleteOne();
-  await Otp.deleteMany({ user: user.id });
-  
-  await Bookmark.deleteMany({ user: user.id });
+  await targetUser.deleteOne();
+  await Otp.deleteMany({ user: targetUser.id });
+
+  await Bookmark.deleteMany({ user: targetUser.id });
 
   // Best effort, same pattern as removeAvatar
-  deleteAsset(avatarPublicId(user.id)).catch((err) =>
+  deleteAsset(avatarPublicId(targetUser.id)).catch((err) =>
     console.error("Failed to delete avatar asset:", err)
   );
-  const posts = await Post.find({ author: user._id });
+  const posts = await Post.find({ author: targetUser._id });
   await removePosts(posts);
   // TODO (Days 8-10): also delete this user's posts, likes and comments
- const likes = await Like.find({ user: user.id }).select("post");
+  const likes = await Like.find({ user: targetUser.id }).select("post");
   if (likes.length > 0) {
     await Post.bulkWrite(
       likes.map((l) => ({
@@ -153,11 +153,11 @@ export async function deleteUser(req: Request, res: Response) {
         },
       }))
     );
-    await Like.deleteMany({ user: user.id });
+    await Like.deleteMany({ user: targetUser.id });
   }
-    // Remove this user's comments on other posts, and fix those posts' counters
+  // Remove this user's comments on other posts, and fix those posts' counters
   const perPost = await Comment.aggregate<{ _id: mongoose.Types.ObjectId; count: number }>([
-    { $match: { author: user._id } },
+    { $match: { author: targetUser._id } },
     { $group: { _id: "$post", count: { $sum: 1 } } },
   ]);
   if (perPost.length > 0) {
@@ -169,7 +169,7 @@ export async function deleteUser(req: Request, res: Response) {
         },
       }))
     );
-    await Comment.deleteMany({ author: user._id });
+    await Comment.deleteMany({ author: targetUser._id });
   }
   res.json({ message: "User deleted" });
 }

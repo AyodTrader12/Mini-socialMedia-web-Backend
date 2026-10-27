@@ -2,9 +2,7 @@ import {model,Schema} from "mongoose"
 
 const likeSchema = new Schema({
     user:{type:Schema.Types.ObjectId,ref:"user",unique:true},
-    pos:{type:Schema.Types.ObjectId,ref:"post",unique:true},
-
-    
+    post:{type:Schema.Types.ObjectId,ref:"post",unique:true},
 },
 {timestamps:{createdAt:true,updatedAt:false}}
 )

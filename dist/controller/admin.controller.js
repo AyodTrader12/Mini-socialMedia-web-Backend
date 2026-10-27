@@ -81,7 +81,7 @@ function listUsers(req, res) {
             filter.isSuspended = true;
         if (typeof req.query.q === "string" && req.query.q.trim()) {
             const prefix = new RegExp(`^${(0, escapeRegex_1.escapeRegex)(req.query.q.trim().toLowerCase())}`);
-            filter.$or = [{ username: prefix }, { email: prefix }];
+            filter.$or = [{ userName: prefix }, { email: prefix }];
         }
         const [users, total] = yield Promise.all([
             userModel_1.user.find(filter)
@@ -101,61 +101,61 @@ function listUsers(req, res) {
 }
 function getUser(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-        const user = yield findTarget(String(req.params.id));
-        res.json({ user: (0, serializer_1.toAdminUser)(user) });
+        const targetUser = yield findTarget(String(req.params.id));
+        res.json({ user: (0, serializer_1.toAdminUser)(targetUser) });
     });
 }
 function verifyUser(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-        const user = yield findTarget(String(req.params.id));
-        user.isVerified = true;
-        yield user.save();
-        yield otp_1.Otp.deleteOne({ user: user.id, type: "verify" }); // code no longer needed
-        res.json({ user: (0, serializer_1.toAdminUser)(user) });
+        const targetUser = yield findTarget(String(req.params.id));
+        targetUser.isVerified = true;
+        yield targetUser.save();
+        yield otp_1.Otp.deleteOne({ user: targetUser.id, type: "verify" }); // code no longer needed
+        res.json({ user: (0, serializer_1.toAdminUser)(targetUser) });
     });
 }
 function suspendUser(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-        const user = yield findTarget(String(req.params.id));
-        assertNotSelf(req, user.id);
-        assertNotAdmin(user);
-        user.isSuspended = true;
-        yield user.save();
-        res.json({ user: (0, serializer_1.toAdminUser)(user) });
+        const targetUser = yield findTarget(String(req.params.id));
+        assertNotSelf(req, targetUser.id);
+        assertNotAdmin(targetUser);
+        targetUser.isSuspended = true;
+        yield targetUser.save();
+        res.json({ user: (0, serializer_1.toAdminUser)(targetUser) });
     });
 }
 function unsuspendUser(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-        const user = yield findTarget(String(req.params.id));
-        user.isSuspended = false;
-        yield user.save();
-        res.json({ user: (0, serializer_1.toAdminUser)(user) });
+        const targetUser = yield findTarget(String(req.params.id));
+        targetUser.isSuspended = false;
+        yield targetUser.save();
+        res.json({ user: (0, serializer_1.toAdminUser)(targetUser) });
     });
 }
 function updateRole(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const { role } = req.body;
-        const user = yield findTarget(String(req.params.id));
-        assertNotSelf(req, user.id);
-        user.role = role;
-        yield user.save();
-        res.json({ user: (0, serializer_1.toAdminUser)(user) });
+        const targetUser = yield findTarget(String(req.params.id));
+        assertNotSelf(req, targetUser.id);
+        targetUser.role = role;
+        yield targetUser.save();
+        res.json({ user: (0, serializer_1.toAdminUser)(targetUser) });
     });
 }
 function deleteUser(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-        const user = yield findTarget(String(req.params.id));
-        assertNotSelf(req, user.id);
-        assertNotAdmin(user);
-        yield user.deleteOne();
-        yield otp_1.Otp.deleteMany({ user: user.id });
-        yield bookMark_1.Bookmark.deleteMany({ user: user.id });
+        const targetUser = yield findTarget(String(req.params.id));
+        assertNotSelf(req, targetUser.id);
+        assertNotAdmin(targetUser);
+        yield targetUser.deleteOne();
+        yield otp_1.Otp.deleteMany({ user: targetUser.id });
+        yield bookMark_1.Bookmark.deleteMany({ user: targetUser.id });
         // Best effort, same pattern as removeAvatar
-        (0, upload_service_1.deleteAsset)((0, upload_service_1.avatarPublicId)(user.id)).catch((err) => console.error("Failed to delete avatar asset:", err));
-        const posts = yield postModel_1.Post.find({ author: user._id });
+        (0, upload_service_1.deleteAsset)((0, upload_service_1.avatarPublicId)(targetUser.id)).catch((err) => console.error("Failed to delete avatar asset:", err));
+        const posts = yield postModel_1.Post.find({ author: targetUser._id });
         yield (0, post_service_1.removePosts)(posts);
         // TODO (Days 8-10): also delete this user's posts, likes and comments
-        const likes = yield likeModel_1.Like.find({ user: user.id }).select("post");
+        const likes = yield likeModel_1.Like.find({ user: targetUser.id }).select("post");
         if (likes.length > 0) {
             yield postModel_1.Post.bulkWrite(likes.map((l) => ({
                 updateOne: {
@@ -163,11 +163,11 @@ function deleteUser(req, res) {
                     update: { $inc: { likesCount: -1 } },
                 },
             })));
-            yield likeModel_1.Like.deleteMany({ user: user.id });
+            yield likeModel_1.Like.deleteMany({ user: targetUser.id });
         }
         // Remove this user's comments on other posts, and fix those posts' counters
         const perPost = yield commentModel_1.Comment.aggregate([
-            { $match: { author: user._id } },
+            { $match: { author: targetUser._id } },
             { $group: { _id: "$post", count: { $sum: 1 } } },
         ]);
         if (perPost.length > 0) {
@@ -177,7 +177,7 @@ function deleteUser(req, res) {
                     update: { $inc: { commentsCount: -p.count } },
                 },
             })));
-            yield commentModel_1.Comment.deleteMany({ author: user._id });
+            yield commentModel_1.Comment.deleteMany({ author: targetUser._id });
         }
         res.json({ message: "User deleted" });
     });

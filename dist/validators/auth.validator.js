@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changePasswordSchema = exports.resetPasswordSchema = exports.forgotPasswordSchema = exports.verifyAccountSchema = exports.loginSchema = exports.registerSchema = exports.userNameRule = void 0;
+exports.googleLoginSchema = exports.changePasswordSchema = exports.resetPasswordSchema = exports.forgotPasswordSchema = exports.verifyAccountSchema = exports.loginSchema = exports.registerSchema = exports.userNameRule = void 0;
 const zod_1 = require("zod");
 exports.userNameRule = zod_1.z
     .string()
@@ -39,4 +39,7 @@ exports.changePasswordSchema = zod_1.z
     .refine((data) => data.currentPassword !== data.newPassword, {
     message: "New password must be different from the current one",
     path: ["newPassword"],
+});
+exports.googleLoginSchema = zod_1.z.object({
+    idToken: zod_1.z.string().min(1, "Google token is required"),
 });

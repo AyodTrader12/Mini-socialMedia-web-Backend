@@ -31,7 +31,7 @@ function likePost(req, res) {
             throw new AppError_1.AppError(404, "Post not found");
         let created = true;
         try {
-            yield likeModel_1.Like.create({ user: req.userId, Post: postId });
+            yield likeModel_1.Like.create({ user: req.userId, post: postId });
         }
         catch (err) {
             if (err.code !== 11000)
