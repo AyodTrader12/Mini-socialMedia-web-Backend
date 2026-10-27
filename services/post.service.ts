@@ -6,6 +6,7 @@ import { toPost } from "../utils/serializer";
 import { Post } from "../model/postModel";
 import { user  } from "../model/userModel";
 import { Bookmark } from "../model/bookMark";
+import {Like } from "../model/likeModel"
 export type PostMedia = {
   url: string;
   publicId: string;
@@ -86,9 +87,12 @@ export async function uploadPostMedia(files: Express.Multer.File[]): Promise<Pos
   return uploaded;
 }
 
-export async function deletePostMedia(media: PostMedia[]) {
+
+
+export async function deletePostMedia(media: Pick<PostMedia, "publicId" | "type">[]) {
   await Promise.allSettled(media.map((m) => deleteAsset(m.publicId, m.type)));
 }
+
 
 type PostDoc = InstanceType<typeof Post>;
 
@@ -97,24 +101,27 @@ async function getBookmarkedIds(viewerId: string | undefined, postIds: unknown[]
   if (!viewerId || postIds.length === 0) return new Set<string>();
 
   const rows = await Bookmark.find({ user: viewerId, post: { $in: postIds } }).select("post");
-  return new Set(rows.map((r) => r.post.toString()));
+  return new Set(rows.map((r) => r.Post.toString()));
+}
+
+async function getLikedIds(viewerId: string | undefined, postIds: unknown[]) {
+  if (!viewerId || postIds.length === 0) return new Set<string>();
+
+  const rows = await Like.find({ user: viewerId, post: { $in: postIds } }).select("post");
+  return new Set(rows.map((r) => r.Post.toString()));
 }
 
 /** Turns post documents into API objects: loads authors and viewer flags in bulk. */
 export async function serializePosts(docs: PostDoc[], viewerId?: string) {
   const authorIds = [...new Set(docs.map((p) => p.author.toString()))];
 
-  const [authors, bookmarked] = await Promise.all([
+  const postIds = docs.map((p) => p._id);
+  const [authors, bookmarked, liked] = await Promise.all([
     user.find({ _id: { $in: authorIds } }),
-    getBookmarkedIds(viewerId, docs.map((p) => p._id)),
+    getBookmarkedIds(viewerId, postIds),
+    getLikedIds(viewerId, postIds),
   ]);
-  const authorMap = new Map(authors.map((a:any) => [a.id, a]));
-
-  return docs.flatMap((post) => {
-    const author = authorMap.get(post.author.toString());
-    if (!author) return []; // skip orphaned posts
-    return [toPost(post, author, { liked: false, bookmarked: bookmarked.has(post.id) })];
-  });
+      return [toPost(Post, authors, { liked: liked.has(Post.id), bookmarked: bookmarked.has(Post.id) })];
 }
 
 export async function getPostsPage(opts: {
@@ -184,4 +191,21 @@ export async function getSavedPostsPage(opts: {
     posts: await serializePosts(ordered, opts.viewerId),
     nextCursor: hasMore ? encodeCursor(page[page.length - 1]) : null,
   };
+}
+
+
+/** Deletes posts and everything attached to them. */
+export async function removePosts(posts: PostDoc[]) {
+  if (posts.length === 0) return;
+
+  const ids = posts.map((p) => p._id);
+
+  await Post.deleteMany({ _id: { $in: ids } });
+  await Bookmark.deleteMany({ post: { $in: ids } });
+  await Like.deleteMany({ post: { $in: ids } });
+  await Comment.deleteMany({ post: { $in: ids } });
+  // Cloudinary cleanup is best effort and doesn't block the response.
+  // deletePostMedia uses allSettled, so it never throws.
+  const media = posts.flatMap((p) => p.media.map((m) => ({ publicId: m.publicId, type: m.type })));
+  void deletePostMedia(media);
 }

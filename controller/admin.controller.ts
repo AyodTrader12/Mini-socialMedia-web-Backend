@@ -8,7 +8,10 @@ import { UpdateRoleInput } from "../validators/admin.validator";
 import { toAdminUser } from "../utils/serializer";
 import { deleteAsset,avatarPublicId } from "../services/upload.service";
 import { Bookmark } from "../model/bookMark";
-
+import { Post } from "../model/postModel";
+import { removePosts } from "../services/post.service";
+import {Like} from "../model/likeModel"
+import { Comment } from "../model/commentModel";
 async function findTarget(id: string) {
   if (!mongoose.isValidObjectId(id)) throw new AppError(400, "Invalid user id");
   const User = await user.findById(id);
@@ -137,8 +140,37 @@ export async function deleteUser(req: Request, res: Response) {
   deleteAsset(avatarPublicId(user.id)).catch((err) =>
     console.error("Failed to delete avatar asset:", err)
   );
-
+  const posts = await Post.find({ author: user._id });
+  await removePosts(posts);
   // TODO (Days 8-10): also delete this user's posts, likes and comments
-
+ const likes = await Like.find({ user: user.id }).select("post");
+  if (likes.length > 0) {
+    await Post.bulkWrite(
+      likes.map((l) => ({
+        updateOne: {
+          filter: { _id: l.post, likesCount: { $gt: 0 } },
+          update: { $inc: { likesCount: -1 } },
+        },
+      }))
+    );
+    await Like.deleteMany({ user: user.id });
+  }
+    // Remove this user's comments on other posts, and fix those posts' counters
+  const perPost = await Comment.aggregate<{ _id: mongoose.Types.ObjectId; count: number }>([
+    { $match: { author: user._id } },
+    { $group: { _id: "$post", count: { $sum: 1 } } },
+  ]);
+  if (perPost.length > 0) {
+    await Post.bulkWrite(
+      perPost.map((p) => ({
+        updateOne: {
+          filter: { _id: p._id, commentsCount: { $gte: p.count } },
+          update: { $inc: { commentsCount: -p.count } },
+        },
+      }))
+    );
+    await Comment.deleteMany({ author: user._id });
+  }
   res.json({ message: "User deleted" });
 }
+

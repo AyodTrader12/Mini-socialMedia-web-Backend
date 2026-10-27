@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const like_controller_1 = require("../controller/like.controller");
+const authenticate_1 = require("../middleware/authenticate");
+const requireVerified_1 = require("../middleware/requireVerified");
+const router = (0, express_1.Router)();
+router.post("/:id/like-post", authenticate_1.authenticate, requireVerified_1.requireVerified, like_controller_1.likePost);
+router.delete("/:id/delete-like", authenticate_1.authenticate, like_controller_1.unlikePost);
+exports.default = router;

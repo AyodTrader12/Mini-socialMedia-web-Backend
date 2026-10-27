@@ -2,12 +2,11 @@ import z from "zod";
 import { LIMITS } from "../config/limits";
 
 
-export const createPostSchema = z.object({
+export const updatePostSchema = z.object({
   caption: z
     .string()
     .trim()
-    .max(LIMITS.captionLength, `Caption must be at most ${LIMITS.captionLength} characters`)
-    .optional(),
+    .max(LIMITS.captionLength, `Caption must be at most ${LIMITS.captionLength} characters`),
 });
 
-export type CreatePostInput = z.infer<typeof createPostSchema>;
+export type UpdatePostInput = z.infer<typeof updatePostSchema>;

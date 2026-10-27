@@ -22,6 +22,7 @@ const postSchema = new mongoose_1.Schema({
         },
     },
     likesCount: { type: Number, default: 0 },
+    editedAt: { type: Date },
     commentsCount: { type: Number, default: 0 },
 }, { timestamps: true });
 postSchema.pre("validate", function (next) {

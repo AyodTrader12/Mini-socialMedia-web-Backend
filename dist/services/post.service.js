@@ -15,6 +15,7 @@ exports.deletePostMedia = deletePostMedia;
 exports.serializePosts = serializePosts;
 exports.getPostsPage = getPostsPage;
 exports.getSavedPostsPage = getSavedPostsPage;
+exports.removePosts = removePosts;
 const limits_1 = require("../config/limits");
 const AppError_1 = require("../config/AppError");
 const upload_service_1 = require("./upload.service");
@@ -23,6 +24,7 @@ const serializer_1 = require("../utils/serializer");
 const postModel_1 = require("../model/postModel");
 const userModel_1 = require("../model/userModel");
 const bookMark_1 = require("../model/bookMark");
+const likeModel_1 = require("../model/likeModel");
 // export async function uploadPostMedia(files: Express.Multer.File[]): Promise<PostMedia[]> {
 //   if (files.length === 0) return [];
 //   // ...rest unchanged
@@ -95,24 +97,28 @@ function getBookmarkedIds(viewerId, postIds) {
         if (!viewerId || postIds.length === 0)
             return new Set();
         const rows = yield bookMark_1.Bookmark.find({ user: viewerId, post: { $in: postIds } }).select("post");
-        return new Set(rows.map((r) => r.post.toString()));
+        return new Set(rows.map((r) => r.Post.toString()));
+    });
+}
+function getLikedIds(viewerId, postIds) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!viewerId || postIds.length === 0)
+            return new Set();
+        const rows = yield likeModel_1.Like.find({ user: viewerId, post: { $in: postIds } }).select("post");
+        return new Set(rows.map((r) => r.Post.toString()));
     });
 }
 /** Turns post documents into API objects: loads authors and viewer flags in bulk. */
 function serializePosts(docs, viewerId) {
     return __awaiter(this, void 0, void 0, function* () {
         const authorIds = [...new Set(docs.map((p) => p.author.toString()))];
-        const [authors, bookmarked] = yield Promise.all([
+        const postIds = docs.map((p) => p._id);
+        const [authors, bookmarked, liked] = yield Promise.all([
             userModel_1.user.find({ _id: { $in: authorIds } }),
-            getBookmarkedIds(viewerId, docs.map((p) => p._id)),
+            getBookmarkedIds(viewerId, postIds),
+            getLikedIds(viewerId, postIds),
         ]);
-        const authorMap = new Map(authors.map((a) => [a.id, a]));
-        return docs.flatMap((post) => {
-            const author = authorMap.get(post.author.toString());
-            if (!author)
-                return []; // skip orphaned posts
-            return [(0, serializer_1.toPost)(post, author, { liked: false, bookmarked: bookmarked.has(post.id) })];
-        });
+        return [(0, serializer_1.toPost)(postModel_1.Post, authors, { liked: liked.has(postModel_1.Post.id), bookmarked: bookmarked.has(postModel_1.Post.id) })];
     });
 }
 function getPostsPage(opts) {
@@ -165,5 +171,21 @@ function getSavedPostsPage(opts) {
             posts: yield serializePosts(ordered, opts.viewerId),
             nextCursor: hasMore ? (0, cursor_1.encodeCursor)(page[page.length - 1]) : null,
         };
+    });
+}
+/** Deletes posts and everything attached to them. */
+function removePosts(posts) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (posts.length === 0)
+            return;
+        const ids = posts.map((p) => p._id);
+        yield postModel_1.Post.deleteMany({ _id: { $in: ids } });
+        yield bookMark_1.Bookmark.deleteMany({ post: { $in: ids } });
+        yield likeModel_1.Like.deleteMany({ post: { $in: ids } });
+        yield Comment.deleteMany({ post: { $in: ids } });
+        // Cloudinary cleanup is best effort and doesn't block the response.
+        // deletePostMedia uses allSettled, so it never throws.
+        const media = posts.flatMap((p) => p.media.map((m) => ({ publicId: m.publicId, type: m.type })));
+        void deletePostMedia(media);
     });
 }

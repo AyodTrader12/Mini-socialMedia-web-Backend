@@ -27,6 +27,7 @@ const postSchema = new Schema(
   },
 },
     likesCount: { type: Number, default: 0 },
+    editedAt: { type: Date },
     commentsCount: { type: Number, default: 0 },
   },
   { timestamps: true }

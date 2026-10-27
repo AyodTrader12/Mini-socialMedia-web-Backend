@@ -1,6 +1,8 @@
 import { user } from "../model/userModel";
 import { Post } from "../model/postModel";
-type UserDoc = InstanceType<typeof user>;
+import { Comment } from "../model/commentModel";
+
+type UserDoc = InstanceType<typeof user>
 
 // Safe for anyone to see
 export function toPublicProfile(user: UserDoc) {
@@ -68,5 +70,29 @@ export function toPost(
     bookmarkedByMe: viewer.bookmarked,
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,
+    editedAt: post.editedAt ?? null,
+  };
+}
+
+//   const postIds = docs.map((p) => p._id);
+//   const [authors, bookmarked, liked] = await Promise.all([
+//     user.find({ _id: { $in: authorIds } }),
+//     getBookmarkedIds(viewerId, postIds),
+//     getLikedIds(viewerId, postIds),
+
+//   ]
+//     return [toPost(post, author, { liked: liked.has(post.id), bookmarked: bookmarked.has(post.id) })];
+// );
+
+
+type CommentDoc = InstanceType<typeof Comment>;
+
+export function toComment(comment: CommentDoc, author: UserDoc) {
+  return {
+    id: comment._id,
+    postId: comment.post,
+    author: toPostAuthor(author),
+    text: comment.text,
+    createdAt: comment.createdAt,
   };
 }

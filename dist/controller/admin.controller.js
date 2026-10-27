@@ -28,6 +28,10 @@ const escapeRegex_1 = require("../utils/escapeRegex");
 const serializer_1 = require("../utils/serializer");
 const upload_service_1 = require("../services/upload.service");
 const bookMark_1 = require("../model/bookMark");
+const postModel_1 = require("../model/postModel");
+const post_service_1 = require("../services/post.service");
+const likeModel_1 = require("../model/likeModel");
+const commentModel_1 = require("../model/commentModel");
 function findTarget(id) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!mongoose_1.default.isValidObjectId(id))
@@ -148,7 +152,33 @@ function deleteUser(req, res) {
         yield bookMark_1.Bookmark.deleteMany({ user: user.id });
         // Best effort, same pattern as removeAvatar
         (0, upload_service_1.deleteAsset)((0, upload_service_1.avatarPublicId)(user.id)).catch((err) => console.error("Failed to delete avatar asset:", err));
+        const posts = yield postModel_1.Post.find({ author: user._id });
+        yield (0, post_service_1.removePosts)(posts);
         // TODO (Days 8-10): also delete this user's posts, likes and comments
+        const likes = yield likeModel_1.Like.find({ user: user.id }).select("post");
+        if (likes.length > 0) {
+            yield postModel_1.Post.bulkWrite(likes.map((l) => ({
+                updateOne: {
+                    filter: { _id: l.post, likesCount: { $gt: 0 } },
+                    update: { $inc: { likesCount: -1 } },
+                },
+            })));
+            yield likeModel_1.Like.deleteMany({ user: user.id });
+        }
+        // Remove this user's comments on other posts, and fix those posts' counters
+        const perPost = yield commentModel_1.Comment.aggregate([
+            { $match: { author: user._id } },
+            { $group: { _id: "$post", count: { $sum: 1 } } },
+        ]);
+        if (perPost.length > 0) {
+            yield postModel_1.Post.bulkWrite(perPost.map((p) => ({
+                updateOne: {
+                    filter: { _id: p._id, commentsCount: { $gte: p.count } },
+                    update: { $inc: { commentsCount: -p.count } },
+                },
+            })));
+            yield commentModel_1.Comment.deleteMany({ author: user._id });
+        }
         res.json({ message: "User deleted" });
     });
 }

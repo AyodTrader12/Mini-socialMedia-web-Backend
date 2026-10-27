@@ -15,14 +15,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createPost = createPost;
 exports.getFeed = getFeed;
 exports.getPostById = getPostById;
+exports.editPost = editPost;
+exports.deletePost = deletePost;
 const AppError_1 = require("../config/AppError");
 const userModel_1 = require("../model/userModel");
 const postModel_1 = require("../model/postModel");
+// import { CreatePostInput } from "../validators/post.validator";
 const serializer_1 = require("../utils/serializer");
 const post_service_1 = require("../services/post.service");
 const mongoose_1 = __importDefault(require("mongoose"));
 const post_service_2 = require("../services/post.service");
 const post_service_3 = require("../services/post.service");
+const post_service_4 = require("../services/post.service");
 function createPost(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
@@ -67,5 +71,50 @@ function getPostById(req, res) {
         if (!serialized)
             throw new AppError_1.AppError(404, "Post not found"); // author was deleted
         res.json({ post: serialized });
+    });
+}
+function findPostOr404(rawId) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const id = String(rawId);
+        if (!mongoose_1.default.isValidObjectId(id))
+            throw new AppError_1.AppError(404, "Post not found");
+        const post = yield postModel_1.Post.findById(id);
+        if (!post)
+            throw new AppError_1.AppError(404, "Post not found");
+        return post;
+    });
+}
+function editPost(req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const { caption } = req.body;
+        const post = yield findPostOr404(req.params.id);
+        if (post.author.toString() !== req.userId) {
+            throw new AppError_1.AppError(403, "You can only edit your own posts");
+        }
+        // A text-only post with no caption would be an empty post
+        if (caption === "" && post.media.length === 0) {
+            throw new AppError_1.AppError(400, "A text post can't be empty. Delete it instead");
+        }
+        // Saving the same text isn't an edit
+        if (caption !== post.caption) {
+            post.caption = caption;
+            post.editedAt = new Date();
+            yield post.save();
+        }
+        const [serialized] = yield (0, post_service_3.serializePosts)([post], req.userId);
+        if (!serialized)
+            throw new AppError_1.AppError(404, "Post not found");
+        res.json({ post: serialized });
+    });
+}
+function deletePost(req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const post = yield findPostOr404(req.params.id);
+        const isOwner = post.author.toString() === req.userId;
+        if (!isOwner && req.userRole !== "admin") {
+            throw new AppError_1.AppError(403, "You can only delete your own posts");
+        }
+        yield (0, post_service_4.removePosts)([post]);
+        res.json({ message: "Post deleted" });
     });
 }

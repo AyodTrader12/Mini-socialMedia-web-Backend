@@ -5,6 +5,7 @@ exports.toPublicUser = toPublicUser;
 exports.toAdminUser = toAdminUser;
 exports.toPostAuthor = toPostAuthor;
 exports.toPost = toPost;
+exports.toComment = toComment;
 // Safe for anyone to see
 function toPublicProfile(user) {
     return {
@@ -32,6 +33,7 @@ function toPostAuthor(user) {
     };
 }
 function toPost(post, author, viewer = { liked: false, bookmarked: false }) {
+    var _a;
     return {
         id: post._id,
         author: toPostAuthor(author),
@@ -48,5 +50,15 @@ function toPost(post, author, viewer = { liked: false, bookmarked: false }) {
         bookmarkedByMe: viewer.bookmarked,
         createdAt: post.createdAt,
         updatedAt: post.updatedAt,
+        editedAt: (_a = post.editedAt) !== null && _a !== void 0 ? _a : null,
+    };
+}
+function toComment(comment, author) {
+    return {
+        id: comment._id,
+        postId: comment.post,
+        author: toPostAuthor(author),
+        text: comment.text,
+        createdAt: comment.createdAt,
     };
 }

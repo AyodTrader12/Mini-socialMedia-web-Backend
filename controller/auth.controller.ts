@@ -7,6 +7,9 @@ import bcrypt from "bcrypt";
 import { sendOtp, verifyOtp } from "../services/otp.service";
 import { RegisterInput,LoginInput,ResetPasswordInput,VerifyAccountInput,ChangePasswordInput,ForgotPasswordInput } from "../validators/auth.validator";
 import { getPostsPage } from "../services/post.service";
+
+
+
 const DUMMY_HASH = bcrypt.hashSync("dummy-password", 12);
 
 export async function register(req: Request, res: Response) {

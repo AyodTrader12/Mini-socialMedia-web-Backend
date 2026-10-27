@@ -10,6 +10,8 @@ import authRoutes from "./router/auth.routes";
 import adminRoutes from "./router/admin.routes"
 import postRoutes from "./router/post.routes"
 import shareRoutes from "./router/share.routes"
+import likeRoutes from "./router/like.routes"
+import commentRoutes from "./router/comment.routes"
 env.config()
 
 const app:Application = express();
@@ -25,6 +27,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admin",adminRoutes)
 app.use("/api/post",postRoutes)
 app.use("/api/share",shareRoutes)
+app.use("/api/like",likeRoutes)
+app.use("/api/comments",commentRoutes)
 app.use(errorHandler)
 
 app.get("/health",(req:Request,res:Response)=> {
