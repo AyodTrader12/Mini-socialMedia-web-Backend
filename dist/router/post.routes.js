@@ -12,6 +12,7 @@ const post_controller_2 = require("../controller/post.controller");
 const bookmark_controller_1 = require("../controller/bookmark.controller");
 const comment_controller_1 = require("../controller/comment.controller");
 const comment_validator_1 = require("../validators/comment.validator");
+const rateLimiter_1 = require("../middleware/rateLimiter");
 const router = (0, express_1.Router)();
 // post feed
 router.get("/get-feed", authenticate_1.authenticate, post_controller_2.getFeed);
@@ -19,7 +20,7 @@ router.get("/saved", authenticate_1.authenticate, bookmark_controller_1.getSaved
 //get single post by id
 router.get("/:id", optionalAuth_1.optionalAuth, post_controller_2.getPostById);
 //create post
-router.post("/create-post", authenticate_1.authenticate, requireVerified_1.requireVerified, upload_1.postMediaUpload, (0, validate_1.validate)(post_validator_1.updatePostSchema), post_controller_1.createPost);
+router.post("/create-post", authenticate_1.authenticate, requireVerified_1.requireVerified, rateLimiter_1.uploadLimiter, upload_1.postMediaUpload, (0, validate_1.validate)(post_validator_1.updatePostSchema), post_controller_1.createPost);
 //bookmarks
 router.post("/:id/add-bookmark", authenticate_1.authenticate, bookmark_controller_1.addBookmark);
 router.delete("/:id/delete-bookmark", authenticate_1.authenticate, bookmark_controller_1.removeBookmark);

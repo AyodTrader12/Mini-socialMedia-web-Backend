@@ -10,6 +10,7 @@ import { getFeed,getPostById } from "../controller/post.controller";
 import { addBookmark,removeBookmark,getSavedPosts } from "../controller/bookmark.controller";
 import { createComment, getComments } from "../controller/comment.controller";
 import { createCommentSchema } from "../validators/comment.validator";
+import { uploadLimiter } from "../middleware/rateLimiter";
 const router = Router()
 
 
@@ -20,7 +21,7 @@ router.get("/saved",authenticate,getSavedPosts)
 //get single post by id
 router.get("/:id",optionalAuth,getPostById)
 //create post
-router.post("/create-post", authenticate, requireVerified, postMediaUpload, validate(updatePostSchema), createPost);
+router.post("/create-post", authenticate, requireVerified,uploadLimiter, postMediaUpload, validate(updatePostSchema), createPost);
 //bookmarks
 router.post("/:id/add-bookmark",authenticate,addBookmark)
 router.delete("/:id/delete-bookmark",authenticate,removeBookmark)

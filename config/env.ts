@@ -17,6 +17,7 @@ NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   CLOUDINARY_API_SECRET:z.string().min(1,"CLOUDINARY_API_SECRET is required"),
   GOOGLE_KEY: z.string().min(16,"GOOGLE_SECRET MUST BE AT EAST 16"),
   CLIENT_ID_GOOGLE: z.string().min(1, "GOOGLE_CLIENT_ID is required"),
+  RATE_LIMIT_DISABLED: z.string().default("false").transform((v) => v === "true"),
 })
 
 export const env = envSchema.parse(process.env)

@@ -102,7 +102,7 @@ async function getBookmarkedIds(viewerId: string | undefined, postIds: unknown[]
   if (!viewerId || postIds.length === 0) return new Set<string>();
 
   const rows = await Bookmark.find({ user: viewerId, post: { $in: postIds } }).select("post");
-  return new Set(rows.map((r) => r.post.toString()));
+return new Set(rows.map((r) => r.post.toString()));
 }
 
 async function getLikedIds(viewerId: string | undefined, postIds: unknown[]) {

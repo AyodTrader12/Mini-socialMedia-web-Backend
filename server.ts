@@ -12,16 +12,18 @@ import postRoutes from "./router/post.routes"
 import shareRoutes from "./router/share.routes"
 import likeRoutes from "./router/like.routes"
 import commentRoutes from "./router/comment.routes"
+import { apiLimiter } from "./middleware/rateLimiter";
 env.config()
 
 const app:Application = express();
+app.set("trust proxy",1)
 const PORT = process.env.PORT 
 app.use(express.json())
 app.use(cors())
 app.use(helmet())
 
 
-
+app.use(["/api", "/share"], apiLimiter);
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/admin",adminRoutes)
